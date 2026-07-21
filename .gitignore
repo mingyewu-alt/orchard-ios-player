@@ -3,3 +3,4 @@ build/
 DerivedData/
 OrchardPlayer.xcodeproj/
 *.ipa
+OrchardPlayer-unsigned-ipa.zip

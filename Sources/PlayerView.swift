@@ -36,6 +36,10 @@ struct PlayerView: View {
                     Image(systemName: "arrow.clockwise")
                 }
 
+                Image(systemName: model.blockerReady ? "shield.lefthalf.filled" : "shield.slash")
+                    .foregroundStyle(model.blockerReady ? .green : .secondary)
+                    .accessibilityLabel(model.blockerStatus)
+
                 Spacer()
 
                 if let url = model.currentURL {
@@ -69,6 +73,8 @@ final class PlayerModel: ObservableObject {
     @Published var currentURL: URL?
     @Published var showError = false
     @Published var errorMessage = "請檢查網路連線後再試一次。"
+    @Published var blockerReady = false
+    @Published var blockerStatus = "廣告阻擋規則載入中"
 
     func goBack() { webView?.goBack() }
     func reload() { webView?.reload() }
@@ -99,7 +105,19 @@ struct PlayerWebView: UIViewRepresentable {
 
         context.coordinator.observe(webView)
         model.webView = webView
-        webView.load(URLRequest(url: PlayerModel.homeURL))
+        ContentBlocker.install(into: configuration.userContentController) { result in
+            Task { @MainActor in
+                switch result {
+                case .success:
+                    model.blockerReady = true
+                    model.blockerStatus = "iOS 廣告阻擋規則已啟用"
+                case .failure(let error):
+                    model.blockerReady = false
+                    model.blockerStatus = "廣告阻擋規則載入失敗：\(error.localizedDescription)"
+                }
+                webView.load(URLRequest(url: PlayerModel.homeURL))
+            }
+        }
         return webView
     }
 

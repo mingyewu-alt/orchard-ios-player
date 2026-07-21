@@ -2,6 +2,14 @@
 
 這是一個供個人側載測試的 iOS 網頁播放器，會在 `WKWebView` 中開啟 YouTube Music。
 
+## iOS 廣告阻擋層
+
+- 使用 `WKContentRuleList` 阻擋已知的 DoubleClick、Google Ads 及 YouTube 廣告統計請求。
+- 使用 `WKUserScript` 移除頁面上的廣告與宣傳元件。
+- 工具列的盾牌圖示為綠色時，代表阻擋規則已成功載入。
+- YouTube 可能把廣告與音樂放在相同網域或媒體串流中，因此無法保證完全阻擋。
+- Pear 使用的 Electron／Ghostery 套件依賴桌面 Chromium API，無法在 iOS WebKit 執行；此處是 iOS 原生替代實作。
+
 ## 重要限制
 
 - 本專案不是 Pear Desktop 的直接移植；Electron 無法在 iOS 執行。
@@ -24,6 +32,7 @@ GitHub 公開 repository 的標準 Actions runner 目前可免費使用；若改
 ## 本機結構
 
 - `Sources/`：SwiftUI 與 WKWebView 程式碼
+- `Sources/ContentBlocker.swift`：iOS 網路規則與頁面元件過濾
 - `Resources/Info.plist`：App 權限與背景音訊設定
 - `project.yml`：由 XcodeGen 產生 Xcode project
 - `.github/workflows/build-ipa.yml`：在 GitHub macOS runner 編譯未簽署 IPA
