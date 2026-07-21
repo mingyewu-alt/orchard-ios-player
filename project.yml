@@ -15,10 +15,9 @@ targets:
       - Sources
       - path: Resources/LaunchScreen.storyboard
         buildPhase: resources
-    info:
-      path: Resources/Info.plist
     settings:
       base:
+        INFOPLIST_FILE: Resources/Info.plist
         PRODUCT_BUNDLE_IDENTIFIER: local.orchardplayer.app
         PRODUCT_NAME: Orchard Player
         TARGETED_DEVICE_FAMILY: "1,2"
