@@ -2,6 +2,7 @@ import SwiftUI
 import WebKit
 
 struct PlayerView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var model = PlayerModel()
 
     var body: some View {
@@ -68,6 +69,16 @@ struct PlayerView: View {
         } message: {
             Text(model.blockerStatus)
         }
+        .onChange(of: scenePhase) { phase in
+            switch phase {
+            case .inactive, .background:
+                model.prepareForBackgroundPlayback()
+            case .active:
+                model.resumeAfterForeground()
+            @unknown default:
+                break
+            }
+        }
     }
 }
 
@@ -89,6 +100,16 @@ final class PlayerModel: ObservableObject {
     func goBack() { webView?.goBack() }
     func reload() { webView?.reload() }
     func openHome() { webView?.load(URLRequest(url: Self.homeURL)) }
+
+    func prepareForBackgroundPlayback() {
+        AudioSessionManager.activate()
+        webView?.evaluateJavaScript("window.__orchardPlayback?.prepareForBackground()")
+    }
+
+    func resumeAfterForeground() {
+        AudioSessionManager.activate()
+        webView?.evaluateJavaScript("window.__orchardPlayback?.resumeIfNeeded()")
+    }
 
     func toggleBlocker() {
         guard let webView else { return }
@@ -136,6 +157,8 @@ struct PlayerWebView: UIViewRepresentable {
         configuration.allowsInlineMediaPlayback = true
         configuration.mediaTypesRequiringUserActionForPlayback = []
         configuration.websiteDataStore = .default()
+        configuration.preferences.javaScriptCanOpenWindowsAutomatically = true
+        configuration.userContentController.addUserScript(Self.playbackSupportScript)
 
         let preferences = WKWebpagePreferences()
         preferences.allowsContentJavaScript = true
@@ -143,6 +166,7 @@ struct PlayerWebView: UIViewRepresentable {
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
+        webView.uiDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = true
         webView.scrollView.contentInsetAdjustmentBehavior = .automatic
 
@@ -170,7 +194,47 @@ struct PlayerWebView: UIViewRepresentable {
         coordinator.stopObserving(webView)
     }
 
-    final class Coordinator: NSObject, WKNavigationDelegate {
+    private static let playbackSupportScript = WKUserScript(
+        source: #"""
+        (() => {
+          if (window.__orchardPlayback) return;
+
+          let shouldResume = false;
+          const mediaElements = () => Array.from(document.querySelectorAll('audio, video'));
+
+          document.addEventListener('play', () => { shouldResume = true; }, true);
+          document.addEventListener('pause', () => {
+            if (!document.hidden) shouldResume = false;
+          }, true);
+
+          window.__orchardPlayback = {
+            prepareForBackground() {
+              const playing = mediaElements().some((media) => !media.paused && !media.ended);
+              shouldResume = shouldResume || playing;
+              if (shouldResume) {
+                mediaElements().forEach((media) => media.play().catch(() => {}));
+              }
+              return shouldResume;
+            },
+            resumeIfNeeded() {
+              if (!shouldResume) return false;
+              mediaElements().forEach((media) => media.play().catch(() => {}));
+              return true;
+            }
+          };
+
+          document.addEventListener('visibilitychange', () => {
+            if (document.hidden && shouldResume) {
+              mediaElements().forEach((media) => media.play().catch(() => {}));
+            }
+          }, true);
+        })();
+        """#,
+        injectionTime: .atDocumentStart,
+        forMainFrameOnly: false
+    )
+
+    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
         private let model: PlayerModel
         private var observations: [NSKeyValueObservation] = []
 
@@ -198,6 +262,19 @@ struct PlayerWebView: UIViewRepresentable {
         func stopObserving(_ webView: WKWebView) {
             observations.removeAll()
             webView.navigationDelegate = nil
+            webView.uiDelegate = nil
+        }
+
+        func webView(
+            _ webView: WKWebView,
+            createWebViewWith configuration: WKWebViewConfiguration,
+            for navigationAction: WKNavigationAction,
+            windowFeatures: WKWindowFeatures
+        ) -> WKWebView? {
+            guard navigationAction.targetFrame == nil,
+                  let url = navigationAction.request.url else { return nil }
+            webView.load(URLRequest(url: url))
+            return nil
         }
 
         func webView(

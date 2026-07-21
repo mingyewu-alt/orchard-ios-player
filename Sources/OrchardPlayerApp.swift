@@ -4,7 +4,7 @@ import SwiftUI
 @main
 struct OrchardPlayerApp: App {
     init() {
-        configureAudioSession()
+        AudioSessionManager.activate()
     }
 
     var body: some Scene {
@@ -13,10 +13,17 @@ struct OrchardPlayerApp: App {
         }
     }
 
-    private func configureAudioSession() {
+}
+
+enum AudioSessionManager {
+    static func activate() {
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .default)
+            try session.setCategory(
+                .playback,
+                mode: .moviePlayback,
+                policy: .longFormAudio
+            )
             try session.setActive(true)
         } catch {
             // Playback in the foreground can still work if audio-session setup fails.
