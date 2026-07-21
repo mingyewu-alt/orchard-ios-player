@@ -36,9 +36,13 @@ struct PlayerView: View {
                     Image(systemName: "arrow.clockwise")
                 }
 
-                Image(systemName: model.blockerReady ? "shield.lefthalf.filled" : "shield.slash")
-                    .foregroundStyle(model.blockerReady ? .green : .secondary)
-                    .accessibilityLabel(model.blockerStatus)
+                Button {
+                    model.toggleBlocker()
+                } label: {
+                    Image(systemName: model.blockerReady ? "shield.lefthalf.filled" : "shield.slash")
+                        .foregroundStyle(model.blockerReady ? .green : .secondary)
+                }
+                .accessibilityLabel(model.blockerStatus)
 
                 Spacer()
 
@@ -59,6 +63,11 @@ struct PlayerView: View {
         } message: {
             Text(model.errorMessage)
         }
+        .alert("廣告阻擋", isPresented: $model.showBlockerMessage) {
+            Button("好", role: .cancel) {}
+        } message: {
+            Text(model.blockerStatus)
+        }
     }
 }
 
@@ -75,10 +84,44 @@ final class PlayerModel: ObservableObject {
     @Published var errorMessage = "請檢查網路連線後再試一次。"
     @Published var blockerReady = false
     @Published var blockerStatus = "廣告阻擋規則載入中"
+    @Published var showBlockerMessage = false
 
     func goBack() { webView?.goBack() }
     func reload() { webView?.reload() }
     func openHome() { webView?.load(URLRequest(url: Self.homeURL)) }
+
+    func toggleBlocker() {
+        guard let webView else { return }
+        let controller = webView.configuration.userContentController
+
+        if blockerReady {
+            ContentBlocker.remove(from: controller) { [weak self, weak webView] in
+                guard let self else { return }
+                self.blockerReady = false
+                self.blockerStatus = "廣告阻擋已關閉；再次點盾牌可重新啟用。"
+                self.showBlockerMessage = true
+                webView?.reload()
+            }
+            return
+        }
+
+        blockerStatus = "正在載入廣告阻擋規則…"
+        ContentBlocker.install(into: controller) { [weak self, weak webView] result in
+            Task { @MainActor in
+                guard let self else { return }
+                switch result {
+                case .success:
+                    self.blockerReady = true
+                    self.blockerStatus = "廣告阻擋已啟用。綠色盾牌代表規則正在使用。"
+                    webView?.reload()
+                case .failure(let error):
+                    self.blockerReady = false
+                    self.blockerStatus = "規則載入失敗：\(error.localizedDescription)"
+                }
+                self.showBlockerMessage = true
+            }
+        }
+    }
 }
 
 struct PlayerWebView: UIViewRepresentable {

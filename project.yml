@@ -13,6 +13,8 @@ targets:
     platform: iOS
     sources:
       - Sources
+      - path: Resources/LaunchScreen.storyboard
+        buildPhase: resources
     info:
       path: Resources/Info.plist
     settings:
