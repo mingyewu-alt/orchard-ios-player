@@ -1,7 +1,7 @@
 import WebKit
 
 enum ContentBlocker {
-    private static let identifier = "OrchardPlayer.AdBlockRules.v1"
+    private static let identifier = "OrchardPlayer.AdBlockRules.v2"
 
     private static let rules = #"""
     [
@@ -28,7 +28,21 @@ enum ContentBlocker {
       },
       {
         "trigger": {
-          "url-filter": "^https?://([^/]+\\.)?youtube\\.com/(pagead|ptracking|api/stats/ads)",
+          "url-filter": "^https?://([^/]+\\.)?youtube\\.com/pagead",
+          "resource-type": ["image", "style-sheet", "script", "raw"]
+        },
+        "action": { "type": "block" }
+      },
+      {
+        "trigger": {
+          "url-filter": "^https?://([^/]+\\.)?youtube\\.com/ptracking",
+          "resource-type": ["image", "style-sheet", "script", "raw"]
+        },
+        "action": { "type": "block" }
+      },
+      {
+        "trigger": {
+          "url-filter": "^https?://([^/]+\\.)?youtube\\.com/api/stats/ads",
           "resource-type": ["image", "style-sheet", "script", "raw"]
         },
         "action": { "type": "block" }

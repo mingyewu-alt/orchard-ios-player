@@ -15,9 +15,12 @@ targets:
       - Sources
       - path: Resources/LaunchScreen.storyboard
         buildPhase: resources
+      - path: Resources/Assets.xcassets
+        buildPhase: resources
     settings:
       base:
         INFOPLIST_FILE: Resources/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         PRODUCT_BUNDLE_IDENTIFIER: local.orchardplayer.app
         PRODUCT_NAME: Orchard Player
         TARGETED_DEVICE_FAMILY: "1,2"
