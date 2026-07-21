@@ -67,11 +67,8 @@ enum ContentBlocker {
         completion: @escaping () -> Void
     ) {
         controller.removeAllUserScripts()
-        controller.removeAllContentRuleLists {
-            DispatchQueue.main.async {
-                completion()
-            }
-        }
+        controller.removeAllContentRuleLists()
+        completion()
     }
 
     private static let cosmeticFilterScript = WKUserScript(
